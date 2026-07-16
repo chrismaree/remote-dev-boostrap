@@ -3,6 +3,8 @@
 REMOTE_DEV_CONFIG_DIR="${HOME}/.config/remote-dev"
 REMOTE_DEV_BIN_DIR="${HOME}/.local/bin"
 REMOTE_DEV_STATE_DIR="${HOME}/.local/state/remote-dev"
+REMOTE_DEV_PLATFORM="${REMOTE_DEV_PLATFORM:-generic}"
+REMOTE_DEV_DELIVERY="${REMOTE_DEV_DELIVERY:-script}"
 
 log() {
   printf '\033[1;36m[remote-dev]\033[0m %s\n' "$*"
@@ -113,6 +115,8 @@ write_install_state() {
   local profile="$1"
   cat > "${REMOTE_DEV_STATE_DIR}/install.env" <<EOF
 REMOTE_DEV_PROFILE="${profile}"
+REMOTE_DEV_PLATFORM="${REMOTE_DEV_PLATFORM}"
+REMOTE_DEV_DELIVERY="${REMOTE_DEV_DELIVERY}"
 REMOTE_DEV_INSTALL_DIR="${ROOT_DIR}"
 REMOTE_DEV_SOURCE_REF="${REMOTE_DEV_SOURCE_REF:-}"
 REMOTE_DEV_INSTALL_DOCKER="${INSTALL_DOCKER:-1}"
@@ -128,6 +132,8 @@ print_completion_summary() {
   success "Installation complete."
   printf '\n'
   printf '  Profile:       %s\n' "${PROFILE}"
+  printf '  Platform:      %s\n' "${REMOTE_DEV_PLATFORM}"
+  printf '  Delivery:      %s\n' "${REMOTE_DEV_DELIVERY}"
   printf '  Install root:  %s\n' "${ROOT_DIR}"
   printf '  Configuration: %s\n' "${REMOTE_DEV_CONFIG_DIR}"
   printf '  Projects:      %s\n' "${HOME}/projects"
@@ -138,7 +144,12 @@ print_completion_summary() {
   printf 'Inspect the environment:\n'
   printf '  remote-dev doctor\n'
 
-  if [[ "${PROFILE}" == "full" && "${INSTALL_TAILSCALE}" -eq 1 && "${TAILSCALE_UP}" -eq 0 ]]; then
+  if [[ "${REMOTE_DEV_PLATFORM}" == "exe-dev" ]]; then
+    printf '\n'
+    printf 'Run development servers on 0.0.0.0 using ports 3000-9999.\n'
+    printf 'Open them privately at:\n'
+    printf '  https://%s.exe.xyz:<port>/\n' "$(hostname -s)"
+  elif [[ "${PROFILE}" == "full" && "${INSTALL_TAILSCALE}" -eq 1 && "${TAILSCALE_UP}" -eq 0 ]]; then
     printf '\n'
     printf 'Connect Tailscale and configure private development ports:\n'
     printf '  remote-dev tailscale\n'

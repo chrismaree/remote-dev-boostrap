@@ -6,6 +6,11 @@ STATE_DIR="${HOME}/.local/state/remote-dev"
 CONFIG_FILE="${CONFIG_DIR}/config.env"
 PORTS_FILE="${CONFIG_DIR}/serve-ports"
 
+if [[ -f "${STATE_DIR}/install.env" ]]; then
+  # shellcheck disable=SC1090
+  source "${STATE_DIR}/install.env"
+fi
+
 if [[ -f "${CONFIG_FILE}" ]]; then
   # shellcheck disable=SC1090
   source "${CONFIG_FILE}"
@@ -32,9 +37,9 @@ Commands:
   doctor          Show installed tools, versions, and pending actions
   update          Pull bootstrap updates and rerun the installed profile
   setup           Rerun the installed profile
-  tailscale       Authenticate Tailscale and configure standard ports
-  serve [ports]   Configure private Tailscale Serve endpoints
-  unserve [ports] Remove private Tailscale Serve endpoints
+  tailscale       Authenticate Tailscale and configure standard ports (generic)
+  serve [ports]   Configure private Tailscale Serve endpoints (generic)
+  unserve [ports] Remove private Tailscale Serve endpoints (generic)
   ports           Show configured ports
   codex <action>  Start, pair, or stop Codex remote control
   shell           Start a fresh Zsh login shell
@@ -167,6 +172,8 @@ version_or_missing() {
 doctor() {
   printf 'Remote development environment\n'
   printf '==============================\n\n'
+  printf 'Platform: %s\n' "${REMOTE_DEV_PLATFORM:-generic}"
+  printf 'Delivery: %s\n\n' "${REMOTE_DEV_DELIVERY:-script}"
 
   version_or_missing git git --version
   version_or_missing zsh zsh --version
@@ -191,7 +198,10 @@ doctor() {
     fi
   fi
 
-  if command -v tailscale >/dev/null 2>&1; then
+  if [[ "${REMOTE_DEV_PLATFORM:-generic}" == "exe-dev" ]]; then
+    printf '\033[32mexe.dev proxy\033[0m private HTTPS ports 3000-9999\n'
+    printf '  Bind servers to 0.0.0.0 and open https://%s.exe.xyz:<port>/\n' "$(hostname -s)"
+  elif command -v tailscale >/dev/null 2>&1; then
     if tailscale_is_connected; then
       printf '\033[32mTailscale\033[0m connected as %s\n' "$(tailscale_hostname)"
       tailscale serve status 2>/dev/null || true
@@ -210,7 +220,11 @@ doctor() {
 }
 
 install_arguments() {
-  INSTALL_ARGS=(--profile "${REMOTE_DEV_PROFILE:-full}")
+  if [[ "${REMOTE_DEV_PLATFORM:-generic}" == "exe-dev" ]]; then
+    INSTALL_ARGS=(--preset exe-dev)
+  else
+    INSTALL_ARGS=(--profile "${REMOTE_DEV_PROFILE:-full}")
+  fi
   [[ "${REMOTE_DEV_INSTALL_DOCKER:-1}" == "1" ]] || INSTALL_ARGS+=(--without-docker)
   [[ "${REMOTE_DEV_INSTALL_GCLOUD:-1}" == "1" ]] || INSTALL_ARGS+=(--without-gcloud)
   [[ "${REMOTE_DEV_INSTALL_FOUNDRY:-1}" == "1" ]] || INSTALL_ARGS+=(--without-foundry)
@@ -221,11 +235,16 @@ install_arguments() {
 rerun_setup() {
   load_state
   install_arguments
+  export REMOTE_DEV_PLATFORM="${REMOTE_DEV_PLATFORM:-generic}"
+  export REMOTE_DEV_DELIVERY="${REMOTE_DEV_DELIVERY:-script}"
   exec "${REMOTE_DEV_INSTALL_DIR}/install.sh" "${INSTALL_ARGS[@]}"
 }
 
 update_installation() {
   load_state
+  if [[ "${REMOTE_DEV_DELIVERY:-script}" == "image" ]]; then
+    die "This installation is managed by its Docker image. Build or select a newer image instead."
+  fi
   if [[ -d "${REMOTE_DEV_INSTALL_DIR}/.git" ]]; then
     if git -C "${REMOTE_DEV_INSTALL_DIR}" symbolic-ref -q HEAD >/dev/null 2>&1; then
       git -C "${REMOTE_DEV_INSTALL_DIR}" pull --ff-only
@@ -236,6 +255,8 @@ update_installation() {
     die "Installed repository is not a Git checkout."
   fi
   install_arguments
+  export REMOTE_DEV_PLATFORM="${REMOTE_DEV_PLATFORM:-generic}"
+  export REMOTE_DEV_DELIVERY="${REMOTE_DEV_DELIVERY:-script}"
   exec "${REMOTE_DEV_INSTALL_DIR}/install.sh" "${INSTALL_ARGS[@]}"
 }
 

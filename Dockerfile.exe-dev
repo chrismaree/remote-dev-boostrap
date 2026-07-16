@@ -1,0 +1,35 @@
+FROM ghcr.io/boldsoftware/exeuntu:latest
+
+ARG REMOTE_DEV_SOURCE_REF=image
+
+USER root
+
+COPY --chown=exedev:exedev . /opt/remote-dev-bootstrap
+
+RUN chmod 0755 \
+  /opt/remote-dev-bootstrap/bootstrap.sh \
+  /opt/remote-dev-bootstrap/install.sh \
+  /opt/remote-dev-bootstrap/bin/remote-dev \
+  /opt/remote-dev-bootstrap/exe-dev/setup.sh \
+  /opt/remote-dev-bootstrap/exe-dev/smoke-test.sh \
+  /opt/remote-dev-bootstrap/exe-dev/test-server.sh
+
+USER exedev
+WORKDIR /home/exedev
+
+ENV HOME=/home/exedev \
+  USER=exedev \
+  REMOTE_DEV_PLATFORM=exe-dev \
+  REMOTE_DEV_DELIVERY=image \
+  REMOTE_DEV_SOURCE_REF=${REMOTE_DEV_SOURCE_REF}
+
+RUN /opt/remote-dev-bootstrap/install.sh --preset exe-dev
+
+USER root
+
+EXPOSE 3000 5173 8000 8080 9000
+
+LABEL org.opencontainers.image.source="https://github.com/chrismaree/remote-dev-boostrap" \
+  org.opencontainers.image.description="Chris Maree's experimental exe.dev development image" \
+  exe.dev/login-user="exedev" \
+  exe.dev/install-shelley="true"

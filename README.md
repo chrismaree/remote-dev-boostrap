@@ -8,7 +8,69 @@ modern Python, Node.js, container, cloud, smart-contract, and AI-assisted
 development. It is designed to be safe to run more than once and deliberately
 does not copy credentials, private keys, or project-specific configuration.
 
-## Quick start
+## Recommended: exe.dev setup script
+
+For the first version of this workflow, use the setup script with exe.dev's
+standard `exeuntu` image. This keeps iteration simple while exe.dev provides the
+private HTTPS proxy and the base image provides Docker, Codex, and the VM
+runtime.
+
+Create one VM with the setup script:
+
+```bash
+curl -fsSL \
+  https://raw.githubusercontent.com/chrismaree/remote-dev-boostrap/master/exe-dev/setup.sh \
+  | ssh exe.dev new --name my-devbox --setup-script /dev/stdin
+```
+
+Or make it the default for future VMs:
+
+```bash
+curl -fsSL \
+  https://raw.githubusercontent.com/chrismaree/remote-dev-boostrap/master/exe-dev/setup.sh \
+  | ssh exe.dev defaults write dev.exe new.setup-script
+```
+
+The exe.dev preset installs the full personal toolchain but intentionally does
+not install or configure Tailscale, reinstall Docker, or replace the Codex
+binary supplied by `exeuntu`.
+
+After the VM is ready:
+
+```bash
+ssh my-devbox.exe.xyz
+remote-dev doctor
+exec zsh -l
+```
+
+Run web applications on `0.0.0.0` using ports `3000` through `9999`:
+
+```bash
+npm run dev -- --host 0.0.0.0
+python -m uvicorn app:app --host 0.0.0.0 --port 9000
+```
+
+They are privately available to users with access to the VM:
+
+```text
+https://my-devbox.exe.xyz:3000/
+https://my-devbox.exe.xyz:9000/
+```
+
+Next.js and Vite may also require the exe.dev hostname in
+`allowedDevOrigins` or `server.allowedHosts`.
+
+To check the toolchain and proxy behavior on a VM:
+
+```bash
+~/.local/share/remote-dev-bootstrap/exe-dev/smoke-test.sh
+~/.local/share/remote-dev-bootstrap/exe-dev/test-server.sh
+```
+
+The test server binds port `3000` by default. Set `PORT=9000` to try another
+proxied port.
+
+## Generic Ubuntu quick start
 
 On a fresh Ubuntu 22.04 or 24.04 machine:
 
@@ -98,6 +160,13 @@ Profiles:
 | `core` | `minimal` plus Python and Node.js |
 | `full` | `core` plus Docker, GitHub CLI, gcloud, Foundry, Codex, and Tailscale |
 
+The exe.dev preset selects `full` while skipping components already supplied
+by `exeuntu` or unnecessary behind the exe.dev proxy:
+
+```bash
+bash install.sh --preset exe-dev
+```
+
 Individual full-profile components can be omitted:
 
 ```bash
@@ -107,6 +176,7 @@ bash install.sh --profile full --without-docker --without-gcloud
 Available flags:
 
 ```text
+--preset generic|exe-dev
 --profile minimal|core|full
 --without-docker
 --without-gcloud
@@ -117,6 +187,8 @@ Available flags:
 ```
 
 ## Tailscale
+
+Tailscale is part of the generic Ubuntu path, not the recommended exe.dev path.
 
 `remote-dev tailscale` authenticates the machine and then configures private
 Tailscale Serve endpoints for the standard development ports:
@@ -269,6 +341,37 @@ This performs a fast-forward-only Git update and reruns the currently selected
 profile. Local machine customization remains in `.zshrc.local` and
 `~/.config/remote-dev/config.env`.
 
+An installation baked into the experimental Docker image is immutable.
+`remote-dev update` will tell you to build or select a newer image instead.
+
+## Experimental exe.dev Docker image
+
+`Dockerfile.exe-dev` is a future-facing optimization built on the official
+`ghcr.io/boldsoftware/exeuntu` base. It bakes the same exe.dev preset into the
+image so VM creation does not need to repeat the full package installation.
+
+This is intentionally not the starting workflow. First use the setup script,
+learn which tools belong in the permanent image, then publish a versioned image.
+
+Build locally when you are ready to experiment:
+
+```bash
+docker build -f Dockerfile.exe-dev \
+  -t ghcr.io/chrismaree/remote-dev-bootstrap:experimental .
+```
+
+The repository also includes a manual-only GitHub Actions workflow. Running
+`Publish experimental exe.dev image` publishes the selected tag and a commit
+SHA tag to GitHub Container Registry. It does not run automatically on pushes.
+
+Create an exe.dev VM from a published image:
+
+```bash
+ssh exe.dev new \
+  --name my-image-devbox \
+  --image ghcr.io/chrismaree/remote-dev-bootstrap:experimental
+```
+
 ## Security boundaries
 
 This repository intentionally does not:
@@ -294,6 +397,8 @@ effect.
 bootstrap.sh          Curl-friendly repository installer
 install.sh            Idempotent profile orchestrator
 bin/remote-dev        Day-to-day helper command
+exe-dev/              exe.dev setup and smoke-test scripts
+Dockerfile.exe-dev    Experimental prebuilt exe.dev image
 config/               Default user configuration
 dotfiles/             Managed Zsh, Powerlevel10k, and tmux configuration
 install/              Individual installation modules

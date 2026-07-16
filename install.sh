@@ -6,18 +6,22 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source "${ROOT_DIR}/lib/common.sh"
 
 PROFILE="full"
+PRESET="generic"
 INSTALL_DOCKER=1
 INSTALL_GCLOUD=1
 INSTALL_FOUNDRY=1
 INSTALL_CODEX=1
 INSTALL_TAILSCALE=1
 TAILSCALE_UP=0
+REMOTE_DEV_PLATFORM="${REMOTE_DEV_PLATFORM:-generic}"
+REMOTE_DEV_DELIVERY="${REMOTE_DEV_DELIVERY:-script}"
 
 usage() {
   cat <<'EOF'
 Usage: install.sh [options]
 
 Options:
+  --preset generic|exe-dev
   --profile minimal|core|full
   --without-docker
   --without-gcloud
@@ -31,6 +35,11 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --preset)
+      [[ $# -ge 2 ]] || die "--preset requires a value"
+      PRESET="$2"
+      shift 2
+      ;;
     --profile)
       [[ $# -ge 2 ]] || die "--profile requires a value"
       PROFILE="$2"
@@ -47,6 +56,18 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+case "${PRESET}" in
+  generic) ;;
+  exe-dev)
+    PROFILE="full"
+    INSTALL_DOCKER=0
+    INSTALL_CODEX=0
+    INSTALL_TAILSCALE=0
+    REMOTE_DEV_PLATFORM="exe-dev"
+    ;;
+  *) die "Unknown preset '${PRESET}'. Expected generic or exe-dev." ;;
+esac
+
 case "${PROFILE}" in
   minimal|core|full) ;;
   *) die "Unknown profile '${PROFILE}'. Expected minimal, core, or full." ;;
@@ -56,7 +77,7 @@ require_supported_host
 ensure_user_directories
 install_default_config
 
-log "Installing profile: ${PROFILE}"
+log "Installing profile: ${PROFILE} (${REMOTE_DEV_PLATFORM})"
 run_module system
 run_module shell
 install_managed_dotfiles
