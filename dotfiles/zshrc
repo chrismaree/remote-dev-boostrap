@@ -1,0 +1,91 @@
+# Fast Powerlevel10k prompt preamble. Keep this near the top of the file.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+export ZSH="${HOME}/.oh-my-zsh"
+export ZSH_CUSTOM="${ZSH}/custom"
+export DEFAULT_USER="${USER}"
+export EDITOR="${EDITOR:-vim}"
+export PAGER="${PAGER:-less}"
+export LESS="-FRX"
+
+typeset -U path PATH
+path=(
+  "${HOME}/.local/bin"
+  "${HOME}/.foundry/bin"
+  "${HOME}/go/bin"
+  $path
+)
+
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
+ENABLE_CORRECTION="true"
+COMPLETION_WAITING_DOTS="true"
+HIST_STAMPS="yyyy-mm-dd"
+DISABLE_UNTRACKED_FILES_DIRTY="true"
+
+zstyle ':omz:update' mode reminder
+zstyle ':omz:plugins:nvm' lazy yes
+
+plugins=(
+  colored-man-pages
+  command-not-found
+  direnv
+  docker
+  docker-compose
+  extract
+  git
+  gh
+  history
+  npm
+  nvm
+  pip
+  python
+  sudo
+  tmux
+  z
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+)
+
+source "${ZSH}/oh-my-zsh.sh"
+
+if command -v direnv >/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
+
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias grep='grep --color=auto'
+alias ports='sudo lsof -iTCP -sTCP:LISTEN -P -n'
+alias myip='curl -fsSL https://api.ipify.org && echo'
+alias reload='exec zsh -l'
+alias o='xdg-open'
+alias dc='docker compose'
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+alias g='git'
+alias gs='git status --short --branch'
+alias gd='git diff'
+alias gl='git log --oneline --decorate --graph -20'
+
+mkcd() {
+  mkdir -p "$1" && cd "$1"
+}
+
+venv() {
+  if [[ ! -d .venv ]]; then
+    uv venv
+  fi
+  source .venv/bin/activate
+}
+
+take() {
+  mkdir -p "$1" && cd "$1"
+}
+
+[[ ! -f "${HOME}/.p10k.zsh" ]] || source "${HOME}/.p10k.zsh"
+[[ ! -f "${HOME}/.zshrc.local" ]] || source "${HOME}/.zshrc.local"
