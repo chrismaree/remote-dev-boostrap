@@ -42,6 +42,7 @@ Commands:
   unserve [ports] Remove private Tailscale Serve endpoints (generic)
   ports           Show configured ports
   codex <action>  Start, pair, or stop Codex remote control
+  agents          Log in and set up OpenChamber/OpenCode, Codex, and Claude Code with the shared agent config
   shell           Start a fresh Zsh login shell
   help            Show this help
 EOF
@@ -188,6 +189,12 @@ doctor() {
   version_or_missing forge forge --version
   version_or_missing codex codex --version
   version_or_missing tailscale tailscale version
+  if [[ "${REMOTE_DEV_INSTALL_AGENTS:-0}" == "1" ]]; then
+    version_or_missing opencode opencode --version
+    version_or_missing openchamber openchamber --version
+    version_or_missing claude claude --version
+    version_or_missing op op --version
+  fi
 
   printf '\n'
   if command -v docker >/dev/null 2>&1; then
@@ -230,6 +237,8 @@ install_arguments() {
   [[ "${REMOTE_DEV_INSTALL_FOUNDRY:-1}" == "1" ]] || INSTALL_ARGS+=(--without-foundry)
   [[ "${REMOTE_DEV_INSTALL_CODEX:-1}" == "1" ]] || INSTALL_ARGS+=(--without-codex)
   [[ "${REMOTE_DEV_INSTALL_TAILSCALE:-1}" == "1" ]] || INSTALL_ARGS+=(--without-tailscale)
+  [[ "${REMOTE_DEV_INSTALL_AGENTS:-0}" == "1" ]] && INSTALL_ARGS+=(--with-agents)
+  return 0
 }
 
 rerun_setup() {
@@ -285,6 +294,10 @@ case "${command_name}" in
   unserve) unserve_ports "$@" ;;
   ports) configured_ports ;;
   codex) codex_remote_control "$@" ;;
+  agents)
+    load_state
+    exec "${REMOTE_DEV_INSTALL_DIR}/agents/setup.sh" "$@"
+    ;;
   shell) exec zsh -l ;;
   help|-h|--help) usage ;;
   *) usage; die "Unknown command: ${command_name}" ;;

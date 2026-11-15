@@ -267,6 +267,49 @@ remote-dev codex stop
 
 The helper delegates directly to `codex remote-control`.
 
+## AI agent stack
+
+An agent box runs OpenChamber (the OpenCode web UI), Codex, and Claude Code with
+the shared agent configuration from
+[`chrismaree/open-code-config`](https://github.com/chrismaree/open-code-config):
+the same instructions, skills, MCP servers, providers, and logins as every other
+machine, kept in sync every 30 minutes.
+
+Create an exe.dev VM with the agent prerequisites:
+
+```bash
+printf '%s\n' '#!/usr/bin/env bash' \
+  'export REMOTE_DEV_WITH_AGENTS=1' \
+  'curl -fsSL https://raw.githubusercontent.com/chrismaree/remote-dev-boostrap/master/exe-dev/setup.sh | bash' \
+  | ssh exe.dev new --name my-agent-box --setup-script /dev/stdin
+```
+
+On another Ubuntu host, use `bootstrap.sh --with-agents`. Then finish on the
+machine itself:
+
+```bash
+ssh my-agent-box.exe.xyz
+remote-dev agents
+```
+
+`remote-dev agents` is safe to rerun; each step is skipped once done. It:
+
+1. Logs in to Tailscale and GitHub (use the account the machine should commit as).
+2. Clones the agent config and installs the OpenCode, OpenChamber, Codex,
+   Claude Code, and CodeGraph versions pinned in its `versions.json`.
+3. Asks once for a 1Password service-account token that can read the
+   `agent-config` vault (stored in `~/.config/op/agent-config-token`, mode 600),
+   which lets it pull every secret and login file.
+4. Runs OpenChamber as a systemd service on `127.0.0.1:3000` behind private
+   Tailscale Serve at `https://<machine>.<tailnet>.ts.net/`, with a generated UI
+   password in `~/.config/openchamber/service.env`.
+5. Installs the agent config, creates the machine's commit-signing key, enables
+   the 30-minute sync, and prints anything still missing.
+
+Afterwards, add the printed `allowed_signers` line from an admin machine so this
+machine's config commits are accepted, and add the machine to the OpenChamber
+desktop app as a remote host if you want to use it from your Mac.
+
 ## Python workflow
 
 Python is managed with uv:
@@ -328,6 +371,7 @@ remote-dev serve [...]   Configure private Serve endpoints
 remote-dev unserve [...] Remove private Serve endpoints
 remote-dev ports         Show configured development ports
 remote-dev codex ...     Manage Codex remote control
+remote-dev agents        Set up the AI agent stack (see AI agent stack)
 remote-dev shell         Start a fresh Zsh login shell
 ```
 
@@ -398,6 +442,7 @@ bootstrap.sh          Curl-friendly repository installer
 install.sh            Idempotent profile orchestrator
 bin/remote-dev        Day-to-day helper command
 exe-dev/              exe.dev setup and smoke-test scripts
+agents/setup.sh       Interactive AI agent stack setup (`remote-dev agents`)
 Dockerfile.exe-dev    Experimental prebuilt exe.dev image
 config/               Default user configuration
 dotfiles/             Managed Zsh, Powerlevel10k, and tmux configuration
