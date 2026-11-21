@@ -31,5 +31,10 @@ export REMOTE_DEV_REF="${REF}"
 export REMOTE_DEV_PLATFORM="exe-dev"
 export REMOTE_DEV_DELIVERY="script"
 
+install_args=(--preset exe-dev)
+if [[ "${REMOTE_DEV_WITH_AGENTS:-0}" == "1" ]]; then
+  install_args+=(--with-agents)
+fi
+
 log "Installing the exe.dev preset..."
-bash "${bootstrap_file}" --preset exe-dev
+bash "${bootstrap_file}" "${install_args[@]}"

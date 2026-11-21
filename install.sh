@@ -12,6 +12,7 @@ INSTALL_GCLOUD=1
 INSTALL_FOUNDRY=1
 INSTALL_CODEX=1
 INSTALL_TAILSCALE=1
+INSTALL_AGENTS="${REMOTE_DEV_WITH_AGENTS:-0}"
 TAILSCALE_UP=0
 REMOTE_DEV_PLATFORM="${REMOTE_DEV_PLATFORM:-generic}"
 REMOTE_DEV_DELIVERY="${REMOTE_DEV_DELIVERY:-script}"
@@ -28,6 +29,7 @@ Options:
   --without-foundry
   --without-codex
   --without-tailscale
+  --with-agents        Install prerequisites for the AI agent stack (finish with: remote-dev agents)
   --tailscale-up
   -h, --help
 EOF
@@ -50,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     --without-foundry) INSTALL_FOUNDRY=0; shift ;;
     --without-codex) INSTALL_CODEX=0; shift ;;
     --without-tailscale) INSTALL_TAILSCALE=0; shift ;;
+    --with-agents) INSTALL_AGENTS=1; shift ;;
     --tailscale-up) TAILSCALE_UP=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "Unknown option: $1" ;;
@@ -95,6 +98,7 @@ if [[ "${PROFILE}" == "full" ]]; then
   [[ "${INSTALL_FOUNDRY}" -eq 1 ]] && run_module foundry
   [[ "${INSTALL_CODEX}" -eq 1 ]] && run_module codex
   [[ "${INSTALL_TAILSCALE}" -eq 1 ]] && run_module tailscale
+  [[ "${INSTALL_AGENTS}" -eq 1 ]] && run_module agents
 fi
 
 write_install_state "${PROFILE}"
